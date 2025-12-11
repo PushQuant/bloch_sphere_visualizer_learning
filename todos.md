@@ -6,12 +6,16 @@
 - IBM / BlockSphereSim as inspiration
 - scope: take input (vector or modifications) and visualize
 - only front end 
+- animation of rotation VS jump into place (toggle-able)
 - visualization
+- build as library/component to be modular
 
 ### Tools
-- three.js
-- React Three Fiber
-- [ ] read docs
+- [ ] research React Three Fiber
+- [ ] read nextjs docs
 
 ## Implementation
 - [ ] set up NextJS 
+- [ ] choosing input type e.g. JSON, normal object
+- [ ] choosing animation tool
+- [ ] setting up JS base
