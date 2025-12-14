@@ -1,0 +1,3 @@
+[submodule "QuantumBlochSphere"]
+	path = QuantumBlochSphere
+	url = https://github.com/MaxieHelenBichmann/QuantumBlochSphere.git
