@@ -8,7 +8,7 @@ Building a Bloch Sphere in react and nextjs with nice animations.
 
 ## Description
 
-This repo is mainly used as an example how to use the QuantumBlochSphere component.
+This repo is mainly used as an example how to use the QuantumBlochSphere component. It should showcase all features the component offers.
 
 - ARCHITECTURE IDEA: The repo https://github.com/MaxieHelenBichmann/QuantumBlochSphere.git is only constructed as a package, that can be included in other projects like the WiQi.
 The actual website to show the module is here in this repo, and includes the QuantumBlochSphere as a git submodule.
