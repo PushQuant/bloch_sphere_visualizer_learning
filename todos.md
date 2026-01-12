@@ -15,8 +15,4 @@
 - [ ] read nextjs docs
 
 ## Implementation
-- [ ] set up NextJS 
-- [ ] choosing input type e.g. JSON, normal object
-- [ ] choosing animation tool
-- [ ] setting up JS base
-- [ ] NextJS tutorial
+- [ ] add things we want to support in the bloch sphere (rotations, bases, ...)
