@@ -3,20 +3,21 @@
 import { useEffect, useMemo, useState } from 'react'
 
 type Axis = 'x' | 'y' | 'z'
-type QState = Record<Axis, number>
+type BlochVector = Record<Axis, number>
+type Complex = [number, number]
 
 const clamp = (value: number, min: number, max: number) =>
     Math.min(max, Math.max(min, value))
 
 const toRad = (deg: number) => (deg * Math.PI) / 180
 
-const normalizeState = (v: QState): QState => {
+const normalizeState = (v: BlochVector): BlochVector => {
     const r = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
     if (!Number.isFinite(r) || r === 0) return { x: 0, y: 0, z: 1 }
     return { x: v.x / r, y: v.y / r, z: v.z / r }
 }
 
-const rotateStateAboutAxis = (v: QState, axis: Axis, deg: number): QState => {
+const rotateStateAboutAxis = (v: BlochVector, axis: Axis, deg: number): BlochVector => {
     const theta = toRad(deg)
     const c = Math.cos(theta)
     const s = Math.sin(theta)
@@ -30,6 +31,77 @@ const rotateStateAboutAxis = (v: QState, axis: Axis, deg: number): QState => {
         return { x: x * c + z * s, y, z: -x * s + z * c }
     }
     return { x: x * c - y * s, y: x * s + y * c, z }
+}
+
+const extractBlochAnglesDeg = (state: BlochVector): [number, number] => {
+    const v = normalizeState(state)
+
+    const toDeg = (rad: number) => (rad * 180) / Math.PI
+    const clampUnit = (val: number) => Math.min(1, Math.max(-1, val))
+
+    const thetaDeg = toDeg(Math.acos(clampUnit(v.z)))
+    const phiDeg = toDeg(Math.atan2(v.y, v.x))
+
+    return [thetaDeg, phiDeg]
+}
+
+const extractQuantumAmplitudes = (state: BlochVector): [Complex, Complex] => {
+    const [thetaDeg, phiDeg] = extractBlochAnglesDeg(state)
+    const thetaRad = (thetaDeg * Math.PI) / 180
+    const phiRad = (phiDeg * Math.PI) / 180
+
+    const alpha: Complex = [Math.cos(thetaRad / 2), 0]
+    const beta: Complex = [Math.sin(thetaRad / 2) * Math.cos(phiRad), Math.sin(thetaRad / 2) * Math.sin(phiRad)]
+
+    return [alpha, beta]
+}
+
+const extractBlochVectorFromAmplitudes = (alpha: Complex, beta: Complex): BlochVector => {
+    const [aRe, aIm] = alpha
+    const [bRe, bIm] = beta
+
+    const x = 2 * (aRe * bRe + aIm * bIm)
+    const y = 2 * (aIm * bRe - aRe * bIm)
+    const z = aRe * aRe + aIm * aIm - bRe * bRe - bIm * bIm
+
+    return normalizeState({ x, y, z })
+}
+
+const applyGateToState = (alpha: Complex, beta: Complex, gate: string): [Complex, Complex] => {
+    switch (gate) {
+        case 'H':
+            return [[
+                (alpha[0] + beta[0]) / Math.sqrt(2),
+                (alpha[1] + beta[1]) / Math.sqrt(2),
+            ],
+            [
+                (alpha[0] - beta[0]) / Math.sqrt(2),
+                (alpha[1] - beta[1]) / Math.sqrt(2),
+            ]]
+        case 'X':
+            return [beta, alpha]
+        case 'Y':
+            return [[-beta[1], beta[0]], [alpha[1], -alpha[0]]]
+        case 'Z':
+            return [[alpha[0], alpha[1]], [-beta[0], -beta[1]]]
+        case 'S':
+            return [alpha, [-beta[1], beta[0]]]
+        case 'T':
+            return [alpha, [
+                (beta[0] + -beta[1]) / Math.sqrt(2),
+                (beta[0] + beta[1]) / Math.sqrt(2),
+            ]]
+        default:
+            return [alpha, beta]
+    }
+}
+
+const applyGateToVector = (state: BlochVector, gate: string): BlochVector => {
+    const [alpha, beta] = extractQuantumAmplitudes(state)
+
+    const [resultAlpha, resultBeta] = applyGateToState(alpha, beta, gate)
+
+    return extractBlochVectorFromAmplitudes(resultAlpha, resultBeta)
 }
 
 function AxisControl({
@@ -140,7 +212,7 @@ function InitStateButton({
 }
 
 export default function Page() {
-    const [state, setState] = useState<QState>({ x: 0, y: 0, z: 1 })
+    const [state, setState] = useState<BlochVector>({ x: 0, y: 0, z: 1 })
     const [controlsResetKey, setControlsResetKey] = useState<number>(0)
     const [lastAction, setLastAction] = useState<string>('—')
 
@@ -150,11 +222,7 @@ export default function Page() {
 
         const v = normalizeState(state)
 
-        const toDeg = (rad: number) => (rad * 180) / Math.PI
-        const clampUnit = (val: number) => Math.min(1, Math.max(-1, val))
-
-        const thetaDeg = toDeg(Math.acos(clampUnit(v.z)))
-        const phiDeg = toDeg(Math.atan2(v.y, v.x))
+        const [thetaDeg, phiDeg] = extractBlochAnglesDeg(state)
 
         return `x ${fmtComp(v.x)} · y ${fmtComp(v.y)} · z ${fmtComp(v.z)}  ~  θ ${fmtDeg(thetaDeg)} · φ ${fmtDeg(phiDeg)}`
     }, [state.x, state.y, state.z])
@@ -169,6 +237,7 @@ export default function Page() {
     }
 
     const applyGate = (gate: string) => {
+        setState((prev) => applyGateToVector(prev, gate))
         setLastAction(`Gate: ${gate}`)
     }
 
@@ -299,9 +368,6 @@ export default function Page() {
                                 <GateButton label="Z" onClick={() => applyGate('Z')} />
                                 <GateButton label="S" onClick={() => applyGate('S')} />
                                 <GateButton label="T" onClick={() => applyGate('T')} />
-                                <GateButton label="Rx" onClick={() => applyGate('Rx')} />
-                                <GateButton label="Ry" onClick={() => applyGate('Ry')} />
-                                <GateButton label="Rz" onClick={() => applyGate('Rz')} />
                             </div>
                         </div>
                     </section>
