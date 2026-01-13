@@ -1,8 +1,10 @@
 {
 	"dependencies": {
 		"next": "^16.0.10",
+		"quantum-bloch-sphere": "file:./QuantumBlochSphere",
 		"react": "^19.2.3",
-		"react-dom": "^19.2.3"
+		"react-dom": "^19.2.3",
+		"three": "^0.170.0"
 	},
 	"scripts": {
 		"dev": "next dev",

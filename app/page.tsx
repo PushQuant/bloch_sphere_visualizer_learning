@@ -1,6 +1,23 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
+import { Suspense, useEffect, useMemo, useState } from 'react'
+import type { BlochSphereProps } from 'quantum-bloch-sphere'
+
+// Loading placeholder for BlochSphere (defined before dynamic import)
+function BlochSpherePlaceholder() {
+    return (
+        <div className="w-full h-full flex items-center justify-center absolute inset-0">
+            <span className="mono text-xs text-[var(--white-muted)]">Loading 3D...</span>
+        </div>
+    )
+}
+
+// Dynamically import BlochSphere to avoid SSR issues with Three.js
+const BlochSphere = dynamic<BlochSphereProps>(
+    () => import('quantum-bloch-sphere').then((mod) => mod.BlochSphere),
+    { ssr: false }
+)
 
 type Axis = 'x' | 'y' | 'z'
 type BlochVector = Record<Axis, number>
@@ -33,25 +50,31 @@ const rotateStateAboutAxis = (v: BlochVector, axis: Axis, deg: number): BlochVec
     return { x: x * c - y * s, y: x * s + y * c, z }
 }
 
+// Convert Cartesian (x, y, z) to Spherical (theta, phi) in radians
+const cartesianToSpherical = (v: BlochVector): { theta: number; phi: number } => {
+    const normalized = normalizeState(v)
+    const { x, y, z } = normalized
+
+    // theta is the polar angle from z-axis (0 at |0⟩, π at |1⟩)
+    const theta = Math.acos(Math.min(1, Math.max(-1, z)))
+
+    // phi is the azimuthal angle in xy-plane
+    let phi = Math.atan2(y, x)
+    if (phi < 0) phi += 2 * Math.PI
+
+    return { theta, phi }
+}
+
 const extractBlochAnglesDeg = (state: BlochVector): [number, number] => {
-    const v = normalizeState(state)
-
-    const toDeg = (rad: number) => (rad * 180) / Math.PI
-    const clampUnit = (val: number) => Math.min(1, Math.max(-1, val))
-
-    const thetaDeg = toDeg(Math.acos(clampUnit(v.z)))
-    const phiDeg = toDeg(Math.atan2(v.y, v.x))
-
-    return [thetaDeg, phiDeg]
+    const { theta, phi } = cartesianToSpherical(state)
+    return [(theta * 180) / Math.PI, (phi * 180) / Math.PI]
 }
 
 const extractQuantumAmplitudes = (state: BlochVector): [Complex, Complex] => {
-    const [thetaDeg, phiDeg] = extractBlochAnglesDeg(state)
-    const thetaRad = (thetaDeg * Math.PI) / 180
-    const phiRad = (phiDeg * Math.PI) / 180
+    const { theta, phi } = cartesianToSpherical(state)
 
-    const alpha: Complex = [Math.cos(thetaRad / 2), 0]
-    const beta: Complex = [Math.sin(thetaRad / 2) * Math.cos(phiRad), Math.sin(thetaRad / 2) * Math.sin(phiRad)]
+    const alpha: Complex = [Math.cos(theta / 2), 0]
+    const beta: Complex = [Math.sin(theta / 2) * Math.cos(phi), Math.sin(theta / 2) * Math.sin(phi)]
 
     return [alpha, beta]
 }
@@ -100,46 +123,6 @@ const applyGateToVector = (state: BlochVector, gate: string): BlochVector => {
     const [alpha, beta] = extractQuantumAmplitudes(state)
     const [resultAlpha, resultBeta] = applyGateToState(alpha, beta, gate)
     return extractBlochVectorFromAmplitudes(resultAlpha, resultBeta)
-}
-
-// Blueprint-style Bloch sphere visualization
-function BlueprintSphere({ state }: { state: BlochVector }) {
-    const v = normalizeState(state)
-    const cx = 200 + v.x * 120
-    const cy = 200 - v.z * 120
-
-    // Softer, muted color palette
-    const colors = {
-        line: 'rgba(107, 163, 190, 0.25)',
-        lineBright: 'rgba(107, 163, 190, 0.4)',
-        accent: '#6ba3be',
-        accentDim: 'rgba(107, 163, 190, 0.5)',
-        grid: 'rgba(107, 163, 190, 0.06)',
-        gridMajor: 'rgba(107, 163, 190, 0.12)',
-        text: 'rgba(107, 163, 190, 0.6)',
-    }
-
-    return (
-        <svg viewBox="0 0 400 400" className="w-full h-full">
-            {/* Background grid lines */}
-            <defs>
-                <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke={colors.grid} strokeWidth="0.5" />
-                </pattern>
-                <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
-                    <rect width="100" height="100" fill="url(#smallGrid)" />
-                    <path d="M 100 0 L 0 0 0 100" fill="none" stroke={colors.gridMajor} strokeWidth="1" />
-                </pattern>
-            </defs>
-
-            <rect width="400" height="400" fill="url(#grid)" />
-
-            {/* Outer circle - main sphere outline */}
-            <circle cx="200" cy="200" r="140" fill="none" stroke={colors.lineBright} strokeWidth="1" />
-
-            <text x="200" y="200" textAnchor="middle" dominantBaseline="middle" fill={colors.text} className="mono text-xs">Placeholder</text>
-        </svg>
-    )
 }
 
 function AxisControl({
@@ -267,10 +250,13 @@ export default function Page() {
     const [lastAction, setLastAction] = useState<string>('System initialized')
     const [activeState, setActiveState] = useState<string>('|0⟩')
 
+    // Compute derived state data
     const stateData = useMemo(() => {
         const v = normalizeState(state)
-        const [thetaDeg, phiDeg] = extractBlochAnglesDeg(state)
-        return { v, thetaDeg, phiDeg }
+        const spherical = cartesianToSpherical(state)
+        const thetaDeg = (spherical.theta * 180) / Math.PI
+        const phiDeg = (spherical.phi * 180) / Math.PI
+        return { v, spherical, thetaDeg, phiDeg }
     }, [state.x, state.y, state.z])
 
     const applyRotation = (axis: Axis, deltaDeg: number) => {
@@ -303,16 +289,28 @@ export default function Page() {
         setActiveState(name)
     }
 
+    // Style config for BlochSphere to match our blueprint theme
+    const blochSphereStyle = {
+        sphereColor: '#6ba3be',
+        sphereOpacity: 0.15,
+        stateVectorColor: '#6ba3be',
+        xAxisColor: '#c47070',
+        yAxisColor: '#70b088',
+        zAxisColor: '#6ba3be',
+        showLabels: true,
+        showEquator: true,
+        showMeridians: false,
+        backgroundColor: 'transparent',
+    }
+
     return (
-        <div className="min-h-screen blueprint-grid scanlines">
+        <div className="min-h-screen blueprint-grid">
             <div className="max-w-7xl mx-auto px-6 py-8">
                 {/* Header */}
                 <header className="mb-8">
                     <div className="flex items-start justify-between">
                         <div>
-                            <div className="flex items-center gap-4 mb-2">
-                            </div>
-                            <h1 className="tech-header text-3xl text-glow text-[var(--cyan)]">
+                            <h1 className="tech-header text-3xl text-[var(--cyan)]">
                                 Quantum State Visualizer
                             </h1>
                             <p className="text-[var(--white-muted)] text-sm mt-2 mono">
@@ -335,14 +333,38 @@ export default function Page() {
                                     </h2>
                                 </div>
 
-                                <div className="aspect-square bg-[var(--bp-bg)] relative">
-                                    <BlueprintSphere state={state} />
+                                <div className="aspect-square bg-[#080d14] relative rounded overflow-hidden">
+                                    <Suspense fallback={<BlochSpherePlaceholder />}>
+                                        <BlochSphere
+                                            state={{
+                                                type: 'spherical',
+                                                coords: {
+                                                    theta: stateData.spherical.theta,
+                                                    phi: stateData.spherical.phi,
+                                                },
+                                            }}
+                                            width="100%"
+                                            height="100%"
+                                            style={blochSphereStyle}
+                                            animation={{
+                                                enabled: true,
+                                                duration: 300,
+                                                easing: 'easeInOut',
+                                            }}
+                                            camera={{
+                                                position: [2.5, 1.5, 2.5],
+                                                enableOrbitControls: true,
+                                                enableZoom: true,
+                                                enablePan: false,
+                                            }}
+                                        />
+                                    </Suspense>
 
                                     {/* Corner markers */}
-                                    <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-[var(--cyan)] opacity-50" />
-                                    <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-[var(--cyan)] opacity-50" />
-                                    <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-[var(--cyan)] opacity-50" />
-                                    <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-[var(--cyan)] opacity-50" />
+                                    <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-[var(--cyan)] opacity-30 pointer-events-none" />
+                                    <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-[var(--cyan)] opacity-30 pointer-events-none" />
+                                    <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-[var(--cyan)] opacity-30 pointer-events-none" />
+                                    <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-[var(--cyan)] opacity-30 pointer-events-none" />
                                 </div>
                             </div>
                         </div>
