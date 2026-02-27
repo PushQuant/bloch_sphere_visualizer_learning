@@ -255,8 +255,9 @@ body {
 }
 
 .tech-btn.primary {
-    background: rgba(0, 212, 255, 0.1);
-    border-color: var(--cyan-dim);
+    background: rgba(107, 163, 190, 0.15);
+    border-color: var(--cyan);
+    color: var(--white);
 }
 
 .tech-btn.amber {

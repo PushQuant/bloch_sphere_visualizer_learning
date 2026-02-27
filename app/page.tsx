@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { Suspense, useEffect, useMemo, useState } from 'react'
-import type { BlochSphereProps } from 'quantum-bloch-sphere'
+import type { BlochSphereProps, AxisLabelSet } from 'quantum-bloch-sphere'
 
 // Loading placeholder for BlochSphere (defined before dynamic import)
 function BlochSpherePlaceholder() {
@@ -129,12 +129,14 @@ function AxisControl({
     axis,
     resetKey,
     onRotate,
+    displayLabel,
 }: {
     axis: Axis
     resetKey: number
     onRotate: (deltaDeg: number) => void
+    displayLabel?: string
 }) {
-    const label = axis.toUpperCase()
+    const label = displayLabel ?? axis.toUpperCase()
     const [angleDeg, setAngleDeg] = useState<number>(0)
 
     useEffect(() => {
@@ -244,11 +246,33 @@ function StateButton({
     )
 }
 
+type SphereMode = 'bloch' | 'poincare'
+
+const sphereLabels: Record<SphereMode, AxisLabelSet> = {
+    bloch: {
+        zPositive: '|0⟩',
+        zNegative: '|1⟩',
+        xPositive: '|+⟩',
+        xNegative: '|-⟩',
+        yPositive: '|+i⟩',
+        yNegative: '|-i⟩',
+    },
+    poincare: {
+        zPositive: 'R',
+        zNegative: 'L',
+        xPositive: 'H',
+        xNegative: 'V',
+        yPositive: 'A',
+        yNegative: 'D',
+    },
+}
+
 export default function Page() {
     const [state, setState] = useState<BlochVector>({ x: 0, y: 0, z: 1 })
     const [controlsResetKey, setControlsResetKey] = useState<number>(0)
     const [lastAction, setLastAction] = useState<string>('System initialized')
-    const [activeState, setActiveState] = useState<string>('|0⟩')
+    const [activeState, setActiveState] = useState<string>('zPositive')
+    const [sphereMode, setSphereMode] = useState<SphereMode>('bloch')
 
     // Compute derived state data
     const stateData = useMemo(() => {
@@ -279,14 +303,15 @@ export default function Page() {
         setState({ x: 0, y: 0, z: 1 })
         setControlsResetKey((k) => k + 1)
         setLastAction('SYSTEM RESET')
-        setActiveState('|0⟩')
+        setActiveState('zPositive')
     }
 
-    const set = (x: number, y: number, z: number, name: string) => {
+    const set = (x: number, y: number, z: number, key: string) => {
         setState(normalizeState({ x, y, z }))
         setControlsResetKey((k) => k + 1)
-        setLastAction(`STATE SET: ${name}`)
-        setActiveState(name)
+        const displayLabel = sphereLabels[sphereMode][key as keyof AxisLabelSet] ?? key
+        setLastAction(`STATE SET: ${displayLabel}`)
+        setActiveState(key)
     }
 
     // Style config for BlochSphere to match our blueprint theme
@@ -314,7 +339,7 @@ export default function Page() {
                                 Quantum State Visualizer
                             </h1>
                             <p className="text-[var(--white-muted)] text-sm mt-2 mono">
-                                Bloch Sphere Interface | Single Qubit Analysis
+                                {sphereMode === 'bloch' ? 'Bloch Sphere' : 'Poincaré Sphere'} Interface | {sphereMode === 'bloch' ? 'Single Qubit Analysis' : 'Polarization Analysis'}
                             </p>
                         </div>
                     </div>
@@ -329,8 +354,24 @@ export default function Page() {
                             <div className="p-4">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="section-header tech-header text-sm text-[var(--cyan)]">
-                                        Bloch Sphere
+                                        {sphereMode === 'bloch' ? 'Bloch Sphere' : 'Poincaré Sphere'}
                                     </h2>
+                                    <div className="flex">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSphereMode('bloch')}
+                                            className={`tech-btn text-xs !px-3 !py-1.5 border-r-0 ${sphereMode === 'bloch' ? 'primary' : ''}`}
+                                        >
+                                            Bloch
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSphereMode('poincare')}
+                                            className={`tech-btn text-xs !px-3 !py-1.5 ${sphereMode === 'poincare' ? 'primary' : ''}`}
+                                        >
+                                            Poincaré
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="aspect-square bg-[#080d14] relative rounded overflow-hidden">
@@ -346,6 +387,7 @@ export default function Page() {
                                             width="100%"
                                             height="100%"
                                             style={blochSphereStyle}
+                                            labels={sphereLabels[sphereMode]}
                                             animation={{
                                                 enabled: true,
                                                 duration: 300,
@@ -421,12 +463,12 @@ export default function Page() {
                             </div>
 
                             <div className="grid grid-cols-3 gap-2">
-                                <StateButton label="|0⟩" onClick={() => set(0, 0, 1, '|0⟩')} active={activeState === '|0⟩'} />
-                                <StateButton label="|1⟩" onClick={() => set(0, 0, -1, '|1⟩')} active={activeState === '|1⟩'} />
-                                <StateButton label="|+⟩" onClick={() => set(1, 0, 0, '|+⟩')} active={activeState === '|+⟩'} />
-                                <StateButton label="|−⟩" onClick={() => set(-1, 0, 0, '|−⟩')} active={activeState === '|−⟩'} />
-                                <StateButton label="|+i⟩" onClick={() => set(0, 1, 0, '|+i⟩')} active={activeState === '|+i⟩'} />
-                                <StateButton label="|−i⟩" onClick={() => set(0, -1, 0, '|−i⟩')} active={activeState === '|−i⟩'} />
+                                <StateButton label={sphereLabels[sphereMode].zPositive!} onClick={() => set(0, 0, 1, 'zPositive')} active={activeState === 'zPositive'} />
+                                <StateButton label={sphereLabels[sphereMode].zNegative!} onClick={() => set(0, 0, -1, 'zNegative')} active={activeState === 'zNegative'} />
+                                <StateButton label={sphereLabels[sphereMode].xPositive!} onClick={() => set(1, 0, 0, 'xPositive')} active={activeState === 'xPositive'} />
+                                <StateButton label={sphereLabels[sphereMode].xNegative!} onClick={() => set(-1, 0, 0, 'xNegative')} active={activeState === 'xNegative'} />
+                                <StateButton label={sphereLabels[sphereMode].yPositive!} onClick={() => set(0, 1, 0, 'yPositive')} active={activeState === 'yPositive'} />
+                                <StateButton label={sphereLabels[sphereMode].yNegative!} onClick={() => set(0, -1, 0, 'yNegative')} active={activeState === 'yNegative'} />
                             </div>
                         </div>
 
@@ -441,18 +483,21 @@ export default function Page() {
                                     axis="x"
                                     resetKey={controlsResetKey}
                                     onRotate={(delta) => applyRotation('x', delta)}
+                                    displayLabel={sphereMode === 'poincare' ? 'S1' : undefined}
                                 />
                                 <div className="tech-divider" />
                                 <AxisControl
                                     axis="y"
                                     resetKey={controlsResetKey}
                                     onRotate={(delta) => applyRotation('y', delta)}
+                                    displayLabel={sphereMode === 'poincare' ? 'S2' : undefined}
                                 />
                                 <div className="tech-divider" />
                                 <AxisControl
                                     axis="z"
                                     resetKey={controlsResetKey}
                                     onRotate={(delta) => applyRotation('z', delta)}
+                                    displayLabel={sphereMode === 'poincare' ? 'S3' : undefined}
                                 />
                             </div>
                         </div>
@@ -460,24 +505,24 @@ export default function Page() {
                         {/* Quantum Gates */}
                         <div className="tech-panel corner-brackets p-4">
                             <h2 className="section-header tech-header text-sm text-[var(--cyan)] mb-4">
-                                Quantum Gates
+                                {sphereMode === 'bloch' ? 'Quantum Gates' : 'Jones Matrices'}
                             </h2>
 
                             <div className="mb-3">
-                                <span className="tech-label">Pauli Gates</span>
+                                <span className="tech-label">{sphereMode === 'bloch' ? 'Pauli Gates' : 'HWP (Half-Wave Plate)'}</span>
                                 <div className="flex gap-2 mt-2">
-                                    <GateButton label="X" onClick={() => applyGate('X')} variant="pauli" />
-                                    <GateButton label="Y" onClick={() => applyGate('Y')} variant="pauli" />
-                                    <GateButton label="Z" onClick={() => applyGate('Z')} variant="pauli" />
+                                    <GateButton label={sphereMode === 'bloch' ? 'X' : 'HWP 0°'} onClick={() => applyGate('X')} variant="pauli" />
+                                    <GateButton label={sphereMode === 'bloch' ? 'Y' : 'HWP 45°'} onClick={() => applyGate('Y')} variant="pauli" />
+                                    <GateButton label={sphereMode === 'bloch' ? 'Z' : 'HWP 22.5°'} onClick={() => applyGate('Z')} variant="pauli" />
                                 </div>
                             </div>
 
                             <div>
-                                <span className="tech-label">Phase Gates</span>
+                                <span className="tech-label">{sphereMode === 'bloch' ? 'Phase Gates' : 'QWP (Quarter-Wave Plate)'}</span>
                                 <div className="flex gap-2 mt-2">
-                                    <GateButton label="H" onClick={() => applyGate('H')} />
-                                    <GateButton label="S" onClick={() => applyGate('S')} />
-                                    <GateButton label="T" onClick={() => applyGate('T')} />
+                                    <GateButton label={sphereMode === 'bloch' ? 'H' : 'HWP 22.5°'} onClick={() => applyGate('H')} />
+                                    <GateButton label={sphereMode === 'bloch' ? 'S' : 'QWP'} onClick={() => applyGate('S')} />
+                                    <GateButton label={sphereMode === 'bloch' ? 'T' : 'EWP'} onClick={() => applyGate('T')} />
                                 </div>
                             </div>
                         </div>
@@ -497,7 +542,7 @@ export default function Page() {
                     <div className="tech-divider mb-6" />
                     <div className="flex items-center justify-between text-[var(--white-muted)]">
                         <div className="flex items-center gap-6">
-                            <span className="tech-label">Quantum Bloch Sphere</span>
+                            <span className="tech-label">{sphereMode === 'bloch' ? 'Quantum Bloch Sphere' : 'Poincaré Sphere'}</span>
                         </div>
                     </div>
                 </footer>
