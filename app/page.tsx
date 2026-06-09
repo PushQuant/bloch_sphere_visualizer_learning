@@ -320,8 +320,8 @@ export default function Page() {
         sphereOpacity: 0.15,
         stateVectorColor: '#6ba3be',
         xAxisColor: '#c47070',
-        yAxisColor: '#70b088',
-        zAxisColor: '#6ba3be',
+        yAxisColor: '#6ba3be',  // Three.js Y = Bloch Z (|0⟩/|1⟩)
+        zAxisColor: '#70b088',  // Three.js Z = Bloch Y (|+i⟩/|-i⟩)
         showLabels: true,
         showEquator: true,
         showMeridians: false,
@@ -513,7 +513,7 @@ export default function Page() {
                                 <div className="flex gap-2 mt-2">
                                     <GateButton label={sphereMode === 'bloch' ? 'X' : 'HWP 0°'} onClick={() => applyGate('X')} variant="pauli" />
                                     <GateButton label={sphereMode === 'bloch' ? 'Y' : 'HWP 45°'} onClick={() => applyGate('Y')} variant="pauli" />
-                                    <GateButton label={sphereMode === 'bloch' ? 'Z' : 'HWP 22.5°'} onClick={() => applyGate('Z')} variant="pauli" />
+                                    <GateButton label={sphereMode === 'bloch' ? 'Z' : 'Faraday Rotator'} onClick={() => applyGate('Z')} variant="pauli" />
                                 </div>
                             </div>
 
