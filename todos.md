@@ -11,8 +11,9 @@
 - build as library/component to be modular
 
 ### Tools
-- [ ] research React Three Fiber
-- [ ] read nextjs docs
+- [x] research React Three Fiber
+- [x] read nextjs docs
 
 ## Implementation
-- [ ] add things we want to support in the bloch sphere (rotations, bases, ...)
+- [x] add things we want to support in the bloch sphere (rotations, bases, ...)
+- [x] Poincare-Alternation
