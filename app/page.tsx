@@ -210,16 +210,18 @@ function GateButton({
     label,
     onClick,
     variant = 'default',
+    wide = false,
 }: {
     label: string
     onClick: () => void
     variant?: 'default' | 'pauli'
+    wide?: boolean
 }) {
     return (
         <button
             type="button"
             onClick={onClick}
-            className={`gate-btn ${variant === 'pauli' ? 'pauli' : ''}`}
+            className={`gate-btn ${variant === 'pauli' ? 'pauli' : ''} ${wide ? 'wide' : ''}`}
         >
             {label}
         </button>
@@ -419,7 +421,7 @@ export default function Page() {
                                     {(['x', 'y', 'z'] as const).map((axis) => (
                                         <div key={axis} className="flex items-center justify-between">
                                             <span className="text-[var(--white-muted)] text-sm uppercase">{axis}</span>
-                                            <span className="data-value">{stateData.v[axis].toFixed(4)}</span>
+                                            <span className="data-value">{stateData.v[axis].toFixed(2)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -510,19 +512,19 @@ export default function Page() {
 
                             <div className="mb-3">
                                 <span className="tech-label">{sphereMode === 'bloch' ? 'Pauli Gates' : 'HWP (Half-Wave Plate)'}</span>
-                                <div className="flex gap-2 mt-2">
-                                    <GateButton label={sphereMode === 'bloch' ? 'X' : 'HWP 0°'} onClick={() => applyGate('X')} variant="pauli" />
-                                    <GateButton label={sphereMode === 'bloch' ? 'Y' : 'HWP 45°'} onClick={() => applyGate('Y')} variant="pauli" />
-                                    <GateButton label={sphereMode === 'bloch' ? 'Z' : 'Faraday Rotator'} onClick={() => applyGate('Z')} variant="pauli" />
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    <GateButton label={sphereMode === 'bloch' ? 'X' : 'HWP 0°'} onClick={() => applyGate('X')} variant="pauli" wide={sphereMode === 'poincare'} />
+                                    <GateButton label={sphereMode === 'bloch' ? 'Y' : 'HWP 45°'} onClick={() => applyGate('Y')} variant="pauli" wide={sphereMode === 'poincare'} />
+                                    <GateButton label={sphereMode === 'bloch' ? 'Z' : 'Faraday Rotator'} onClick={() => applyGate('Z')} variant="pauli" wide={sphereMode === 'poincare'} />
                                 </div>
                             </div>
 
                             <div>
                                 <span className="tech-label">{sphereMode === 'bloch' ? 'Phase Gates' : 'QWP (Quarter-Wave Plate)'}</span>
-                                <div className="flex gap-2 mt-2">
-                                    <GateButton label={sphereMode === 'bloch' ? 'H' : 'HWP 22.5°'} onClick={() => applyGate('H')} />
-                                    <GateButton label={sphereMode === 'bloch' ? 'S' : 'QWP'} onClick={() => applyGate('S')} />
-                                    <GateButton label={sphereMode === 'bloch' ? 'T' : 'EWP'} onClick={() => applyGate('T')} />
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    <GateButton label={sphereMode === 'bloch' ? 'H' : 'HWP 22.5°'} onClick={() => applyGate('H')} wide={sphereMode === 'poincare'} />
+                                    <GateButton label={sphereMode === 'bloch' ? 'S' : 'QWP'} onClick={() => applyGate('S')} wide={sphereMode === 'poincare'} />
+                                    <GateButton label={sphereMode === 'bloch' ? 'T' : 'EWP'} onClick={() => applyGate('T')} wide={sphereMode === 'poincare'} />
                                 </div>
                             </div>
                         </div>

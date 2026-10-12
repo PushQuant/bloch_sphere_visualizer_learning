@@ -328,6 +328,13 @@ body {
     color: var(--white);
 }
 
+.gate-btn.wide {
+    width: auto;
+    min-width: 64px;
+    padding: 0 0.625rem;
+    white-space: nowrap;
+}
+
 /* State button */
 .state-btn {
     font-family: 'JetBrains Mono', monospace;

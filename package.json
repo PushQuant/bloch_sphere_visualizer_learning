@@ -1,5 +1,7 @@
 {
 	"dependencies": {
+		"@react-three/drei": "^10.7.7",
+		"@react-three/fiber": "^9.6.1",
 		"next": "^16.0.10",
 		"quantum-bloch-sphere": "file:./QuantumBlochSphere",
 		"react": "^19.2.3",
